@@ -1,38 +1,25 @@
 import os
-from langchain_openai import ChatOpenAI
-import langfuse.openai # type: ignore
 from langfuse.decorators import observe # type: ignore
-from langchain.prompts import PromptTemplate
 from typing import Tuple
+from graph import Workflow
 from models import CodeOutput
 
 print(os.getenv("OPENAI_API_KEY"))
 
 @observe()
 def generate_code_and_explanation(prompt: str) -> Tuple[str, str]:
+    """Generate code and explanation for the given prompt."""
+
     print(f"Generating code for prompt: {prompt}")
 
-    # Create a ChatOpenAI instance
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7)
-
-    # Create a ChatPromptTemplate
-    template = """
-    You are a helpful coding assistant. Provide JavaScript code and brief explanations.
-    
-    Write a short JavaScript function for the following task: {prompt}
-    """
-
-    code_gen_prompt = PromptTemplate.from_template(
-        template=template,
-        input_variable=["prompt"],
-        partial_variables={"format_instructions": ""}
-    )
-
-    chain = code_gen_prompt | llm.with_structured_output(CodeOutput)
+    # Init compiled graph from LangGraph
+    app = Workflow().app
 
     try:
         # Generate the response
-        response: CodeOutput = chain.invoke({"prompt": prompt})
+        response: CodeOutput = app.invoke(
+            {"context": "", "messages": [("user", prompt)]}
+        )
 
         print(response)
 

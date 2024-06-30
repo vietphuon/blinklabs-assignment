@@ -15,4 +15,4 @@ class CodeOutput(BaseModel):
     imports: str = Field(description="Code block import statements")
     code: str = Field(description="Code block not including import statements")
     explanation: str = Field(description="A one-line explanation of the function")
-    description = "Schema for code solutions to questions about LCEL."
+    description = "Schema for code solutions to questions about coding."
