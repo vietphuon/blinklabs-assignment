@@ -36,7 +36,7 @@ def generate_code_and_explanation(prompt: str) -> Tuple[str, str]:
 
         print(response)
 
-        return response.imports + "\n" + response.code if response.imports else response.code, response.description + "\n" + response.explanation
+        return response.imports + "\n" + response.code if response.imports else response.code, response.explanation
 
     except Exception as e:
         print(f"Error generating code: {e}")
