@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  blinklabs-coding-tutor:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    image: blinklabs-coding-tutor:latest
+    container_name: blinklabs-coding-tutor
+    # Automatically remove the container when it exits
+    ports:
+      - "8080:8080"
