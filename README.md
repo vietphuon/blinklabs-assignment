@@ -27,6 +27,7 @@ AI Coding Tutor is a fullstack application that helps users learn JavaScript by 
 - Axios
 
 ## Project Main Structure
+```plain-text
 ai-coding-tutor/
 ├── backend/
 │   ├── main.py
@@ -41,6 +42,7 @@ ai-coding-tutor/
 │   ├── package.json
 │   └── tsconfig.json
 └── README.md
+```
 
 ## Setup and Installation
 
