@@ -14,5 +14,13 @@ class CodeOutput(BaseModel):
     prefix: str = Field(description="Description of the problem and approach")
     imports: str = Field(description="Code block import statements")
     code: str = Field(description="Code block not including import statements")
-    explanation: str = Field(description="A one-line explanation of the function")
-    description = "Schema for code solutions to questions about LCEL."
+    function_name: str = Field(description="Name of the function")
+    args: tuple = Field(description="Function arguments")
+    description = "Schema for code solutions to questions about javscript functions."
+
+class FirstResponderDecision(BaseModel):
+    """Decision if this a valid JS function coding prompt"""
+
+    decision: bool = Field(description="Decision if this is a valid JS function coding prompt")
+    explanation: str = Field(description="Short explanation of the decision")
+    description = "Schema for decision if this is a valid JS function coding prompt."
