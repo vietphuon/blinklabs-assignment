@@ -1,7 +1,7 @@
 import os
 from langfuse import Langfuse # type: ignore
-from langfuse.decorators import observe, langfuse_context # type: ignore
-import execjs
+from langfuse.decorators import observe # type: ignore
+import execjs # type: ignore
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -13,6 +13,7 @@ langfuse = Langfuse(
 )
 
 # TODO: Implement the following functions
+@observe(capture_input=False, capture_output=False)
 def exec_js(*args):
     """Take in a JavaScript function and execute it."""
     pass

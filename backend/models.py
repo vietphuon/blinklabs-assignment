@@ -17,3 +17,10 @@ class CodeOutput(BaseModel):
     function_name: str = Field(description="Name of the function")
     args: tuple = Field(description="Function arguments")
     description = "Schema for code solutions to questions about javscript functions."
+
+class FirstResponderDecision(BaseModel):
+    """Decision if this a valid JS function coding prompt"""
+
+    decision: bool = Field(description="Decision if this is a valid JS function coding prompt")
+    explanation: str = Field(description="Short explanation of the decision")
+    description = "Schema for decision if this is a valid JS function coding prompt."

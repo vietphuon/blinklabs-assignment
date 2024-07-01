@@ -3,7 +3,7 @@ This module provides implemetation for all the endpoints of the app.
 """
 
 import json
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.middleware.cors import CORSMiddleware
@@ -56,17 +56,9 @@ async def health_check():
 @app.post("/generate_code", response_model=CodeResponse)
 @observe()
 async def generate_code(request: CodeRequest):
-    if not is_valid_coding_question(request.prompt):
-        raise HTTPException(status_code=400, detail="Invalid input: Not a coding question")
     
     code, explanation = generate_code_and_explanation(request.prompt)
     return CodeResponse(code=code, explanation=explanation)
-
-@observe()
-def is_valid_coding_question(prompt: str) -> bool:
-    # Implement a simple check to determine if the prompt is a coding question
-    coding_keywords = ["add", "function", "code", "program", "algorithm", "calculate", "compute"]
-    return any(keyword in prompt.lower() for keyword in coding_keywords)
 
 @observe()
 def main():

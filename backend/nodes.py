@@ -1,5 +1,6 @@
 from states import GraphState
-from llms import code_gen_chain
+from models import CodeOutput, FirstResponderDecision
+from llms import code_gen_chain, first_responder_chain
 from utils import observe, exec_js
 
 ### Nodes
@@ -17,6 +18,39 @@ class Nodes:
         self.concatenated_context = "None"
 
     @observe()
+    def first_responder(self, state: GraphState, **args):
+        """
+        Check if this is a JS function coding prompt
+
+        Args:
+            state (dict): The current graph state
+
+        Returns:
+            state (dict): New key added to state, generation
+        """
+        
+        print("---CHECKING USER INPUT PROMPT---")
+        
+        # State
+        messages = state["messages"]
+        
+        # Solution
+        response: FirstResponderDecision = first_responder_chain.invoke(
+            {"context": self.concatenated_context, "messages": messages}
+        )
+        messages += [
+            (
+                "assistant",
+                f"Decision: {response.decision} \n Explanation: {response.explanation}",
+            )
+        ]
+
+        if response.decision:
+            return {**state, "error": "no", "generation": response, "messages": messages}
+        
+        return {**state, "error": "yes", "generation": response, "messages": messages}
+        
+    @observe()
     def generate(self, state: GraphState):
         """
         Generate a code solution
@@ -32,8 +66,8 @@ class Nodes:
 
         # State
         messages = state["messages"]
-        iterations = state["iterations"]
-        error = state["error"]
+        iterations: int = state["iterations"]
+        error: str = state["error"]
 
         # We have been routed back to generation with an error
         if error == "yes":
@@ -45,7 +79,7 @@ class Nodes:
             ]
 
         # Solution
-        code_solution = code_gen_chain.invoke(
+        code_solution: CodeOutput = code_gen_chain.invoke(
             {"context": self.concatenated_context, "messages": messages}
         )
         messages += [
@@ -75,30 +109,15 @@ class Nodes:
 
         # State
         messages = state["messages"]
-        code_solution = state["generation"]
-        iterations = state["iterations"]
+        code_solution: CodeOutput = state["generation"]
+        iterations: int = state["iterations"]
 
         # Get solution components
-        imports = code_solution.imports
         code = code_solution.code
-
-        # Check imports
-        try:
-            exec_js(imports)
-        except Exception as e:
-            print("---CODE IMPORT CHECK: FAILED---")
-            error_message = [("user", f"Your solution failed the import test: {e}")]
-            messages += error_message
-            return {
-                "generation": code_solution,
-                "messages": messages,
-                "iterations": iterations,
-                "error": "yes",
-            }
 
         # Check execution
         try:
-            exec_js(imports + "\n" + code)
+            exec_js(code)
         except Exception as e:
             print("---CODE BLOCK CHECK: FAILED---")
             error_message = [("user", f"Your solution failed the code execution test: {e}")]
@@ -172,3 +191,23 @@ class Nodes:
                 return "reflect"
             else:
                 return "generate"
+
+    @observe()
+    def decide_to_generate(self, state: GraphState):
+        """
+        Determines whether to generate solution or end here.
+
+        Args:
+            state (dict): The current graph state
+
+        Returns:
+            str: Next node to call
+        """
+        error: str = state["error"]
+
+        if error == "yes":
+            print("---DECISION: INVALID PROMPT, FINISH---")
+            return "end"
+        else:
+            print("---DECISION: PROCEED TO GENERATE SOLUTION---")
+            return "generate"

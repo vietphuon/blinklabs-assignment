@@ -1,10 +1,9 @@
-import os
 from langchain_openai import ChatOpenAI
 import langfuse.openai # type: ignore
 from langfuse.decorators import observe # type: ignore
 from langchain.prompts import ChatPromptTemplate
-from models import CodeOutput
-from prompts import CODE_GEN_WITH_FEWSHOTS_TMPL
+from models import CodeOutput, FirstResponderDecision
+from prompts import CODE_GEN_WITH_FEWSHOTS_TMPL, IS_JAVASCRIPT_FUNCTION_PROMPT_TMPL
 import utils
 
 retry = True
@@ -83,3 +82,12 @@ if retry:
 else:
     # No re-try
     code_gen_chain = code_gen_prompt | llm.with_structured_output(CodeOutput, include_raw=True) | parse_output
+
+first_responder_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", IS_JAVASCRIPT_FUNCTION_PROMPT_TMPL),
+        ("placeholder", "{messages}"),
+    ]
+)
+
+first_responder_chain = first_responder_prompt | llm.with_structured_output(FirstResponderDecision, include_raw=True) | parse_output
