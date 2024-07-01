@@ -5,6 +5,7 @@ from langfuse.decorators import observe # type: ignore
 from langchain.prompts import ChatPromptTemplate
 from models import CodeOutput
 from prompts import CODE_GEN_WITH_FEWSHOTS_TMPL
+import utils
 
 print(os.getenv("OPENAI_API_KEY"))
 
@@ -14,6 +15,7 @@ retry = True
 @observe()
 def check_llm_output(tool_output):
     """Check for parse error or failure to call the tool"""
+    print("Checking llm output:",tool_output)
 
     # Error with parsing
     if tool_output["parsing_error"]:
@@ -55,7 +57,7 @@ def insert_errors(inputs):
 def parse_output(solution):
     """When we add 'include_raw=True' to structured output,
     it will return a dict w 'raw', 'parsed', 'parsing_error'."""
-
+    print(solution["parsed"], type(solution["parsed"]))
     return solution["parsed"]
 
 # TODO: Implement a get_llm function for multiple services
@@ -82,4 +84,4 @@ if retry:
     code_gen_chain = code_gen_chain_re_try | parse_output
 else:
     # No re-try
-    code_gen_chain = code_gen_prompt | llm.with_structured_output(CodeOutput) | parse_output
+    code_gen_chain = code_gen_prompt | llm.with_structured_output(CodeOutput, include_raw=True) | parse_output

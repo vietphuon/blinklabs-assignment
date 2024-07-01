@@ -14,5 +14,6 @@ class CodeOutput(BaseModel):
     prefix: str = Field(description="Description of the problem and approach")
     imports: str = Field(description="Code block import statements")
     code: str = Field(description="Code block not including import statements")
-    explanation: str = Field(description="A one-line explanation of the function")
-    description = "Schema for code solutions to questions about coding."
+    function_name: str = Field(description="Name of the function")
+    args: tuple = Field(description="Function arguments")
+    description = "Schema for code solutions to questions about javscript functions."

@@ -1,11 +1,13 @@
 from states import GraphState
 from llms import code_gen_chain
+from utils import observe, exec_js
 
 ### Nodes
 class Nodes:
     """
 	This class defines the node within the system.
 	"""
+    @observe()
     def __init__(self):
         # Max tries
         self.max_iterations = 3
@@ -14,6 +16,7 @@ class Nodes:
         # RAG context
         self.concatenated_context = "None"
 
+    @observe()
     def generate(self, state: GraphState):
         """
         Generate a code solution
@@ -56,7 +59,7 @@ class Nodes:
         iterations = iterations + 1
         return {"generation": code_solution, "messages": messages, "iterations": iterations}
 
-
+    @observe()
     def code_check(self, state: GraphState):
         """
         Check code
@@ -81,7 +84,7 @@ class Nodes:
 
         # Check imports
         try:
-            exec(imports)
+            exec_js(imports)
         except Exception as e:
             print("---CODE IMPORT CHECK: FAILED---")
             error_message = [("user", f"Your solution failed the import test: {e}")]
@@ -95,7 +98,7 @@ class Nodes:
 
         # Check execution
         try:
-            exec(imports + "\n" + code)
+            exec_js(imports + "\n" + code)
         except Exception as e:
             print("---CODE BLOCK CHECK: FAILED---")
             error_message = [("user", f"Your solution failed the code execution test: {e}")]
@@ -116,7 +119,7 @@ class Nodes:
             "error": "no",
         }
 
-
+    @observe()
     def reflect(self, state: GraphState):
         """
         Reflect on errors
@@ -146,6 +149,7 @@ class Nodes:
 
 
     ### Edges
+    @observe()
     def decide_to_finish(self, state: GraphState):
         """
         Determines whether to finish.

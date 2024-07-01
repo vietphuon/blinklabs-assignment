@@ -18,12 +18,12 @@ def generate_code_and_explanation(prompt: str) -> Tuple[str, str]:
     try:
         # Generate the response
         response: CodeOutput = app.invoke(
-            {"context": "", "messages": [("user", prompt)]}
+            {"context": "", "messages": [("user", prompt)], "iterations":0}
         )
 
         print(response)
 
-        return response.imports + "\n" + response.code if response.imports else response.code, response.explanation
+        return response.imports + "\n" + response.code if response.imports else response.code, response.prefix
 
     except Exception as e:
         print(f"Error generating code: {e}")
