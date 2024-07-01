@@ -60,10 +60,6 @@ async def generate_code(request: CodeRequest):
     code, explanation = generate_code_and_explanation(request.prompt)
     return CodeResponse(code=code, explanation=explanation)
 
-@observe()
-def main():
+if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8080)
-
-if __name__ == "__main__":
-    main()
