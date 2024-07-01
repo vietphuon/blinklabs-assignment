@@ -7,8 +7,6 @@ from models import CodeOutput
 from prompts import CODE_GEN_WITH_FEWSHOTS_TMPL
 import utils
 
-print(os.getenv("OPENAI_API_KEY"))
-
 retry = True
 
 # Optional: Check for errors in case tool use is flaky
