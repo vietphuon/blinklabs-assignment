@@ -11,7 +11,7 @@ Development Tool:
 
 * `mypy`: Type hinting support
 * `black`: Python formatter
-* `pylint`: Linter
+* `ruff`: Linter
 
 ## Development Setup
 
@@ -20,7 +20,7 @@ Development Tool:
 pip install requirements.txt
 ```
 
-2. Setup `.env` file
+2. Setup `.env` file. Copy from `.env.example`
 ```
 virtualenv -p `which python3` .venv # for python 2
 python3 -m venv .venv # For python3.8 and higher
