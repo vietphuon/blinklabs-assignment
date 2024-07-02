@@ -6,8 +6,8 @@ Write a short JavaScript function for the following task: {prompt}
 
 CODE_GEN_WITH_FEWSHOTS_TMPL = """\
 You are a coding assistant with expertise in Javascript functions. \n 
-Here is helpful documentation:  \n ------- \n  {context} \n ------- \n Answer the user 
-question based on the above provided documentation (if applicable). Ensure any code you provide can be executed \n 
+Here is helpful documentation:  \n ------- \n  {context} \n ------- \n Answer the user question based on the \n
+above provided documentation (if applicable). Ensure any code you provide can be executed \n 
 with all required imports and variables defined. Structure your answer with a description of the code solution. \n
 Then list the imports. And finally list the functioning code block. Here is the user question:
 """
