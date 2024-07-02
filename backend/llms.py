@@ -1,12 +1,43 @@
 from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 import langfuse.openai # type: ignore
-from langfuse.decorators import observe # type: ignore
 from langchain.prompts import ChatPromptTemplate
-from models import CodeOutput, FirstResponderDecision
-from prompts import CODE_GEN_WITH_FEWSHOTS_TMPL, IS_JAVASCRIPT_FUNCTION_PROMPT_TMPL
-import utils
+from langchain_core.language_models.chat_models import BaseChatModel
+from models import CodeOutput, FirstResponderDecision, BaseModel
+from prompts import IS_JAVASCRIPT_FUNCTION_PROMPT_TMPL
+from utils import langfuse
+from langfuse.decorators import observe, langfuse_context # type: ignore
 
 retry = True
+
+@observe(capture_output=False)
+def get_llm(**kwargs) -> BaseChatModel:
+    """Method to quickly get the LLM instance based on the Langfuse configuration."""
+    print("---CONFIGURE LLM---")
+    print(kwargs)
+    choice = kwargs.pop('llm')
+    llm: BaseChatModel
+    if choice not in ["openai", "anthropic", "gemini", "mistral"]:
+        raise Exception("Invalid LLM model configuration. Fix in Langfuse UI!")
+    if choice == "openai":
+        llm = ChatOpenAI(**kwargs)
+    elif choice == "anthropic":
+        llm = ChatAnthropic(**kwargs)
+    elif choice == "gemini":
+        llm = ChatGoogleGenerativeAI(**kwargs)
+    elif choice == "mistral":
+        llm = ChatMistralAI(**kwargs)
+
+    # Log success messsage to Langfuse
+    langfuse_context.update_current_observation(
+        output={
+            "status": "success",
+            "data": f"Using {choice} LLM model..."
+        }
+    )
+    return llm
 
 # Optional: Check for errors in case tool use is flaky
 @observe()
@@ -41,7 +72,7 @@ def insert_errors(inputs):
     messages = inputs["messages"]
     messages += [
         (
-            "assistant",
+            "user",
             f"Retry. You are required to fix the parsing errors: {error} \n\n You must invoke the provided tool.",
         )
     ]
@@ -50,44 +81,66 @@ def insert_errors(inputs):
         "context": inputs["context"],
     }
 
-@observe()
-def parse_output(solution):
+@observe(capture_output=False)
+def parse_output(solution) -> BaseModel:
     """When we add 'include_raw=True' to structured output,
     it will return a dict w 'raw', 'parsed', 'parsing_error'."""
-    print(solution["parsed"], type(solution["parsed"]))
-    return solution["parsed"]
+    output: BaseModel = solution["parsed"]
+    langfuse_context.update_current_observation(
+        output=output.dict()
+    )
+    return output
 
-# TODO: Implement a get_llm function for multiple services
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.2)
+@observe()
+def get_llm_chain(**kwargs):
+    
+    print("---RETRIEVE FROM LANGFUSE---")
+    prompt = langfuse.get_prompt("javascript-code-gen", label="production")
+    config = prompt.config
+    CODE_GEN_TMPL = prompt.prompt
 
-code_gen_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", CODE_GEN_WITH_FEWSHOTS_TMPL),
-        ("placeholder", "{messages}"),
-    ]
-)
+    llm = get_llm(**config)
 
-code_chain_llm_raw = code_gen_prompt | llm.with_structured_output(CodeOutput, include_raw=True) | check_llm_output
+    code_gen_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", CODE_GEN_TMPL),
+            ("placeholder", "{messages}"),
+        ]
+    )
 
-fallback_chain = insert_errors | code_chain_llm_raw
-N = 3 # Max re-tries
-code_gen_chain_re_try = code_chain_llm_raw.with_fallbacks(
-    fallbacks=[fallback_chain] * N, exception_key="error"
-)
+    N = 3 # Max re-tries
+    code_chain_llm_raw = code_gen_prompt | llm.with_structured_output(CodeOutput, include_raw=True) | check_llm_output
 
-# Final chain
-if retry:
-    # Optional: With re-try to correct for failure to invoke tool
-    code_gen_chain = code_gen_chain_re_try | parse_output
-else:
-    # No re-try
-    code_gen_chain = code_gen_prompt | llm.with_structured_output(CodeOutput, include_raw=True) | parse_output
+    fallback_chain = insert_errors | code_chain_llm_raw
 
-first_responder_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", IS_JAVASCRIPT_FUNCTION_PROMPT_TMPL),
-        ("placeholder", "{messages}"),
-    ]
-)
+    code_gen_chain_re_try = code_chain_llm_raw.with_fallbacks(
+        fallbacks=[fallback_chain] * N, exception_key="error"
+    )
 
-first_responder_chain = first_responder_prompt | llm.with_structured_output(FirstResponderDecision, include_raw=True) | parse_output
+    # Final chain
+    if retry:
+        # Optional: With re-try to correct for failure to invoke tool
+        code_gen_chain = code_gen_chain_re_try | parse_output
+    else:
+        # No re-try
+        code_gen_chain = code_gen_prompt | llm.with_structured_output(CodeOutput, include_raw=True) | parse_output
+
+    first_responder_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", IS_JAVASCRIPT_FUNCTION_PROMPT_TMPL),
+            ("placeholder", "{messages}"),
+        ]
+    )
+
+    # Implement the chain (with retry) for the first node (first_responder) to check if valid prompt about JS 
+    first_responder_chain_raw = first_responder_prompt | llm.with_structured_output(FirstResponderDecision, include_raw=True) | check_llm_output
+
+    first_responder_fallback_chain = insert_errors | first_responder_chain_raw
+
+    first_responder_chain_re_try = first_responder_chain_raw.with_fallbacks(
+        fallbacks=[first_responder_fallback_chain] * N, exception_key="error"
+    )
+    
+    first_responder_chain = first_responder_chain_re_try | parse_output
+
+    return first_responder_chain, code_gen_chain

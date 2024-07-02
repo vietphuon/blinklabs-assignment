@@ -1,6 +1,6 @@
 from states import GraphState
 from models import CodeOutput, FirstResponderDecision
-from llms import code_gen_chain, first_responder_chain
+from llms import get_llm_chain
 from utils import observe, exec_js
 
 ### Nodes
@@ -16,9 +16,11 @@ class Nodes:
         self.reflect_flag = "do not reflect"
         # RAG context
         self.concatenated_context = "None"
+        # Get llm chain
+        self.first_responder_chain, self.code_gen_chain = get_llm_chain()
 
     @observe()
-    def first_responder(self, state: GraphState, **args):
+    def first_responder(self, state: GraphState):
         """
         Check if this is a JS function coding prompt
 
@@ -30,25 +32,29 @@ class Nodes:
         """
         
         print("---CHECKING USER INPUT PROMPT---")
-        
+        print(state)
         # State
         messages = state["messages"]
         
         # Solution
-        response: FirstResponderDecision = first_responder_chain.invoke(
+        response: FirstResponderDecision = self.first_responder_chain.invoke(
             {"context": self.concatenated_context, "messages": messages}
         )
         messages += [
             (
                 "assistant",
-                f"Decision: {response.decision} \n Explanation: {response.explanation}",
+                f"Decision if valid coding question about Javascript function: {response.decision} \n Explanation: {response.explanation}",
+            ),
+            (
+                "user",
+                "Your answer to the user question: ",
             )
         ]
 
         if response.decision:
-            return {**state, "error": "no", "generation": response, "messages": messages}
+            return {"error": "no", "generation": response}
         
-        return {**state, "error": "yes", "generation": response, "messages": messages}
+        return {"error": "yes", "generation": response}
         
     @observe()
     def generate(self, state: GraphState):
@@ -63,7 +69,7 @@ class Nodes:
         """
 
         print("---GENERATING CODE SOLUTION---")
-
+        print(state)
         # State
         messages = state["messages"]
         iterations: int = state["iterations"]
@@ -79,7 +85,7 @@ class Nodes:
             ]
 
         # Solution
-        code_solution: CodeOutput = code_gen_chain.invoke(
+        code_solution: CodeOutput = self.code_gen_chain.invoke(
             {"context": self.concatenated_context, "messages": messages}
         )
         messages += [
@@ -106,7 +112,7 @@ class Nodes:
         """
 
         print("---CHECKING CODE---")
-
+        print(state)
         # State
         messages = state["messages"]
         code_solution: CodeOutput = state["generation"]
@@ -151,7 +157,7 @@ class Nodes:
         """
 
         print("---GENERATING CODE SOLUTION---")
-
+        print(state)
         # State
         messages = state["messages"]
         iterations = state["iterations"]
@@ -160,7 +166,7 @@ class Nodes:
         # Prompt reflection
 
         # Add reflection
-        reflections = code_gen_chain.invoke(
+        reflections = self.code_gen_chain.invoke(
             {"context": self.concatenated_context, "messages": messages}
         )
         messages += [("assistant", f"Here are reflections on the error: {reflections}")]
@@ -181,12 +187,13 @@ class Nodes:
         """
         error = state["error"]
         iterations = state["iterations"]
-
         if error == "no" or iterations == self.max_iterations:
             print("---DECISION: FINISH---")
+            print(state)
             return "end"
         else:
             print("---DECISION: RE-TRY SOLUTION---")
+            print(state)
             if self.reflect_flag == "reflect":
                 return "reflect"
             else:
@@ -204,10 +211,11 @@ class Nodes:
             str: Next node to call
         """
         error: str = state["error"]
-
         if error == "yes":
             print("---DECISION: INVALID PROMPT, FINISH---")
+            print(state)
             return "end"
         else:
             print("---DECISION: PROCEED TO GENERATE SOLUTION---")
+            print(state)
             return "generate"
